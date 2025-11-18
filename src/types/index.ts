@@ -334,3 +334,435 @@ export interface RequestContext {
   ip: string;
   userAgent?: string;
 }
+
+// ==================== SUBSCRIPTION TYPES ====================
+
+export type SubscriptionStatus = 'active' | 'past_due' | 'canceled' | 'unpaid' | 'trialing' | 'paused';
+export type BillingInterval = 'day' | 'week' | 'month' | 'year';
+
+export interface Plan {
+  id: string;
+  merchantId: string;
+  name: string;
+  description?: string;
+  amount: number;
+  currency: string;
+  interval: BillingInterval;
+  intervalCount: number;
+  trialPeriodDays?: number;
+  features: string[];
+  metadata: Record<string, any>;
+  active: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface Subscription {
+  id: string;
+  merchantId: string;
+  customerId: string;
+  planId: string;
+  status: SubscriptionStatus;
+  quantity: number;
+  currentPeriodStart: Date;
+  currentPeriodEnd: Date;
+  cancelAtPeriodEnd: boolean;
+  canceledAt?: Date;
+  trialStart?: Date;
+  trialEnd?: Date;
+  metadata: Record<string, any>;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface CreateSubscriptionInput {
+  customerId: string;
+  planId: string;
+  quantity?: number;
+  trialDays?: number;
+  metadata?: Record<string, any>;
+  couponId?: string;
+}
+
+export interface Coupon {
+  id: string;
+  merchantId: string;
+  code: string;
+  name: string;
+  discountType: 'percentage' | 'fixed';
+  discountValue: number;
+  currency?: string;
+  maxRedemptions?: number;
+  timesRedeemed: number;
+  expiresAt?: Date;
+  active: boolean;
+  createdAt: Date;
+}
+
+export interface UsageRecord {
+  id: string;
+  subscriptionId: string;
+  quantity: number;
+  timestamp: Date;
+  action: 'increment' | 'set';
+  metadata: Record<string, any>;
+}
+
+// ==================== CRYPTO PAYMENT TYPES ====================
+
+export type CryptoNetwork = 'bitcoin' | 'ethereum' | 'polygon' | 'solana' | 'tron' | 'bsc';
+export type CryptoCurrency = 'BTC' | 'ETH' | 'USDT' | 'USDC' | 'DAI' | 'BUSD';
+export type CryptoPaymentStatus = 'pending' | 'confirming' | 'completed' | 'expired' | 'underpaid' | 'overpaid' | 'failed';
+
+export interface CryptoPayment {
+  id: string;
+  merchantId: string;
+  customerId?: string;
+  transactionId: string;
+  status: CryptoPaymentStatus;
+  cryptocurrency: CryptoCurrency;
+  network: CryptoNetwork;
+  amount: number;
+  cryptoAmount: string;
+  exchangeRate: number;
+  walletAddress: string;
+  txHash?: string;
+  confirmations: number;
+  requiredConfirmations: number;
+  expiresAt: Date;
+  paidAt?: Date;
+  metadata: Record<string, any>;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface CreateCryptoPaymentInput {
+  amount: number;
+  currency: string;
+  cryptocurrency: CryptoCurrency;
+  network?: CryptoNetwork;
+  customerId?: string;
+  description?: string;
+  metadata?: Record<string, any>;
+  expirationMinutes?: number;
+}
+
+export interface CryptoWallet {
+  id: string;
+  merchantId: string;
+  network: CryptoNetwork;
+  currency: CryptoCurrency;
+  address: string;
+  label?: string;
+  isActive: boolean;
+  createdAt: Date;
+}
+
+export interface CryptoExchangeRate {
+  cryptocurrency: CryptoCurrency;
+  fiatCurrency: string;
+  rate: number;
+  timestamp: Date;
+}
+
+// ==================== FRAUD PREVENTION TYPES ====================
+
+export type RiskLevel = 'low' | 'medium' | 'high' | 'critical';
+export type FraudAction = 'allow' | 'review' | 'block';
+
+export interface FraudCheck {
+  id: string;
+  transactionId: string;
+  merchantId: string;
+  riskScore: number;
+  riskLevel: RiskLevel;
+  action: FraudAction;
+  signals: FraudSignal[];
+  metadata: Record<string, any>;
+  createdAt: Date;
+}
+
+export interface FraudSignal {
+  type: string;
+  severity: RiskLevel;
+  message: string;
+  score: number;
+}
+
+export interface FraudRule {
+  id: string;
+  merchantId: string;
+  name: string;
+  description?: string;
+  conditions: FraudCondition[];
+  action: FraudAction;
+  priority: number;
+  active: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface FraudCondition {
+  field: string;
+  operator: 'eq' | 'ne' | 'gt' | 'lt' | 'gte' | 'lte' | 'in' | 'contains' | 'regex';
+  value: any;
+}
+
+export interface Blocklist {
+  id: string;
+  merchantId: string;
+  type: 'email' | 'ip' | 'card_fingerprint' | 'country';
+  value: string;
+  reason?: string;
+  expiresAt?: Date;
+  createdAt: Date;
+}
+
+export interface VelocityCheck {
+  key: string;
+  count: number;
+  windowMs: number;
+  limit: number;
+}
+
+// ==================== INVOICE TYPES ====================
+
+export type InvoiceStatus = 'draft' | 'open' | 'paid' | 'void' | 'uncollectible';
+
+export interface Invoice {
+  id: string;
+  merchantId: string;
+  customerId: string;
+  subscriptionId?: string;
+  number: string;
+  status: InvoiceStatus;
+  currency: string;
+  subtotal: number;
+  taxAmount: number;
+  total: number;
+  amountPaid: number;
+  amountDue: number;
+  lineItems: InvoiceLineItem[];
+  dueDate?: Date;
+  paidAt?: Date;
+  voidedAt?: Date;
+  notes?: string;
+  footer?: string;
+  metadata: Record<string, any>;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface InvoiceLineItem {
+  id: string;
+  description: string;
+  quantity: number;
+  unitAmount: number;
+  amount: number;
+  taxRate?: number;
+  metadata: Record<string, any>;
+}
+
+export interface CreateInvoiceInput {
+  customerId: string;
+  lineItems: Omit<InvoiceLineItem, 'id'>[];
+  dueDate?: Date;
+  notes?: string;
+  footer?: string;
+  metadata?: Record<string, any>;
+  autoSend?: boolean;
+}
+
+// ==================== REPORTING TYPES ====================
+
+export interface DashboardMetrics {
+  totalRevenue: number;
+  totalTransactions: number;
+  successRate: number;
+  averageTransactionValue: number;
+  refundRate: number;
+  chargebackRate: number;
+  revenueByDay: { date: string; amount: number }[];
+  transactionsByStatus: { status: string; count: number }[];
+  topCustomers: { customerId: string; totalSpent: number }[];
+  paymentMethodBreakdown: { method: string; count: number; volume: number }[];
+}
+
+export interface RevenueReport {
+  period: string;
+  grossRevenue: number;
+  refunds: number;
+  fees: number;
+  netRevenue: number;
+  transactionCount: number;
+}
+
+export interface CohortAnalysis {
+  cohort: string;
+  customers: number;
+  retention: number[];
+  ltv: number;
+}
+
+// ==================== ADDITIONAL PAYMENT METHODS ====================
+
+export type ACHAccountType = 'checking' | 'savings';
+export type ACHStatus = 'pending' | 'processing' | 'completed' | 'failed' | 'returned';
+
+export interface ACHPayment {
+  id: string;
+  merchantId: string;
+  customerId: string;
+  transactionId: string;
+  status: ACHStatus;
+  amount: number;
+  currency: string;
+  bankName: string;
+  accountType: ACHAccountType;
+  last4: string;
+  routingNumber: string;
+  returnCode?: string;
+  returnReason?: string;
+  settledAt?: Date;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface SEPAPayment {
+  id: string;
+  merchantId: string;
+  customerId: string;
+  transactionId: string;
+  status: string;
+  amount: number;
+  currency: string;
+  iban: string;
+  bic?: string;
+  mandateReference: string;
+  mandateDate: Date;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface DigitalWalletPayment {
+  walletType: 'apple_pay' | 'google_pay' | 'paypal';
+  tokenId: string;
+  email?: string;
+}
+
+// ==================== PAYMENT LINKS ====================
+
+export interface PaymentLink {
+  id: string;
+  merchantId: string;
+  url: string;
+  amount?: number;
+  currency: string;
+  description?: string;
+  active: boolean;
+  expiresAt?: Date;
+  maxRedemptions?: number;
+  timesRedeemed: number;
+  metadata: Record<string, any>;
+  createdAt: Date;
+}
+
+export interface CreatePaymentLinkInput {
+  amount?: number;
+  currency: string;
+  description?: string;
+  expiresAt?: Date;
+  maxRedemptions?: number;
+  metadata?: Record<string, any>;
+}
+
+// ==================== MARKETPLACE / SPLIT PAYMENTS ====================
+
+export interface ConnectedAccount {
+  id: string;
+  merchantId: string;
+  email: string;
+  businessName: string;
+  status: 'pending' | 'active' | 'rejected';
+  payoutSchedule: string;
+  commissionRate: number;
+  metadata: Record<string, any>;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface PaymentSplit {
+  id: string;
+  transactionId: string;
+  splits: SplitDestination[];
+  createdAt: Date;
+}
+
+export interface SplitDestination {
+  accountId: string;
+  amount: number;
+  feeAmount: number;
+  type: 'percentage' | 'fixed';
+}
+
+// ==================== EXTENDED WEBHOOK TYPES ====================
+
+export type ExtendedWebhookEventType =
+  | WebhookEventType
+  | 'subscription.created'
+  | 'subscription.updated'
+  | 'subscription.canceled'
+  | 'subscription.renewed'
+  | 'invoice.created'
+  | 'invoice.paid'
+  | 'invoice.payment_failed'
+  | 'crypto.payment.pending'
+  | 'crypto.payment.completed'
+  | 'crypto.payment.expired'
+  | 'dispute.created'
+  | 'dispute.updated'
+  | 'dispute.won'
+  | 'dispute.lost'
+  | 'fraud.alert';
+
+// ==================== AUDIT LOG TYPES ====================
+
+export interface AuditLog {
+  id: string;
+  merchantId?: string;
+  userId?: string;
+  action: string;
+  entityType: string;
+  entityId?: string;
+  oldValues?: Record<string, any>;
+  newValues?: Record<string, any>;
+  ipAddress?: string;
+  userAgent?: string;
+  createdAt: Date;
+}
+
+// ==================== KYC/KYB TYPES ====================
+
+export type KYCStatus = 'pending' | 'in_review' | 'approved' | 'rejected' | 'requires_info';
+
+export interface KYCVerification {
+  id: string;
+  merchantId: string;
+  status: KYCStatus;
+  type: 'individual' | 'business';
+  documents: KYCDocument[];
+  verificationData: Record<string, any>;
+  rejectionReason?: string;
+  verifiedAt?: Date;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface KYCDocument {
+  id: string;
+  type: 'id_front' | 'id_back' | 'passport' | 'business_license' | 'proof_of_address' | 'bank_statement';
+  status: 'pending' | 'verified' | 'rejected';
+  fileUrl: string;
+  rejectionReason?: string;
+  uploadedAt: Date;
+}
