@@ -24,6 +24,7 @@ import {
   acquireLock,
   releaseLock
 } from '../database/redis';
+import { eventBus, hookSystem } from '../core';
 
 export class TransactionService {
   async createCharge(
@@ -41,8 +42,27 @@ export class TransactionService {
       }
     }
 
+    // Execute pre-transaction hook
+    const hookResult = await hookSystem.execute('pre:transaction.create', {
+      merchantId,
+      data: { input },
+    });
+
+    if (hookResult.aborted) {
+      throw new ValidationError(hookResult.abortReason || 'Transaction blocked by hook');
+    }
+
+    // Use potentially modified input from hooks
+    const processedInput = hookResult.data?.input || input;
+
+    // Emit transaction initiated event
+    await eventBus.emit('transaction.initiated', {
+      merchantId,
+      data: { input: processedInput },
+    });
+
     // Calculate fees
-    const { fee, netAmount } = await merchantService.calculateFees(merchantId, input.amount);
+    const { fee, netAmount } = await merchantService.calculateFees(merchantId, processedInput.amount);
 
     // Create pending transaction
     const transactionId = uuidv4();
@@ -56,18 +76,18 @@ export class TransactionService {
       [
         transactionId,
         merchantId,
-        input.customerId,
-        input.paymentMethodId,
+        processedInput.customerId,
+        processedInput.paymentMethodId,
         'charge',
         'pending',
-        input.amount,
-        input.currency.toUpperCase(),
+        processedInput.amount,
+        processedInput.currency.toUpperCase(),
         fee,
         netAmount,
-        input.description,
-        input.statementDescriptor,
-        JSON.stringify(input.metadata || {}),
-        input.idempotencyKey,
+        processedInput.description,
+        processedInput.statementDescriptor,
+        JSON.stringify(processedInput.metadata || {}),
+        processedInput.idempotencyKey,
       ]
     );
 
@@ -77,16 +97,16 @@ export class TransactionService {
       // Process through payment gateway
       const gateway = getPaymentGateway();
       const chargeResult = await gateway.charge({
-        amount: input.amount,
-        currency: input.currency,
-        paymentMethodId: input.paymentMethodId || '',
-        description: input.description,
+        amount: processedInput.amount,
+        currency: processedInput.currency,
+        paymentMethodId: processedInput.paymentMethodId || '',
+        description: processedInput.description,
         metadata: {
           transaction_id: transactionId,
           merchant_id: merchantId,
         },
-        capture: input.capture !== false,
-        idempotencyKey: input.idempotencyKey,
+        capture: processedInput.capture !== false,
+        idempotencyKey: processedInput.idempotencyKey,
       });
 
       // Update transaction with gateway response
@@ -116,13 +136,25 @@ export class TransactionService {
 
       // Update merchant balance if successful
       if (transaction.status === 'completed') {
-        await this.updateMerchantBalance(merchantId, input.currency, netAmount, 'pending');
+        await this.updateMerchantBalance(merchantId, processedInput.currency, netAmount, 'pending');
+
+        // Emit transaction completed event
+        await eventBus.emit('transaction.completed', {
+          merchantId,
+          data: { transaction: this.sanitizeTransaction(transaction) },
+        });
 
         // Send webhook
         await webhookService.send(merchantId, 'transaction.completed', {
           transaction: this.sanitizeTransaction(transaction),
         });
       } else if (transaction.status === 'failed') {
+        // Emit transaction failed event
+        await eventBus.emit('transaction.failed', {
+          merchantId,
+          data: { transaction: this.sanitizeTransaction(transaction) },
+        });
+
         await webhookService.send(merchantId, 'transaction.failed', {
           transaction: this.sanitizeTransaction(transaction),
         });
@@ -139,14 +171,26 @@ export class TransactionService {
       transaction.status = 'failed';
       transaction.errorMessage = errorMessage;
 
+      // Emit transaction failed event
+      await eventBus.emit('transaction.failed', {
+        merchantId,
+        data: { transaction: this.sanitizeTransaction(transaction), error: errorMessage },
+      });
+
       await webhookService.send(merchantId, 'transaction.failed', {
         transaction: this.sanitizeTransaction(transaction),
       });
     }
 
+    // Execute post-transaction hook
+    await hookSystem.execute('post:transaction.create', {
+      merchantId,
+      data: { transaction },
+    });
+
     // Store idempotency response
-    if (input.idempotencyKey) {
-      await setIdempotencyKey(input.idempotencyKey, transaction);
+    if (processedInput.idempotencyKey) {
+      await setIdempotencyKey(processedInput.idempotencyKey, transaction);
     }
 
     logger.info('Charge processed', {
@@ -178,6 +222,16 @@ export class TransactionService {
 
     if (refundAmount > original.amount - original.refundedAmount) {
       throw new ValidationError('Refund amount exceeds available amount');
+    }
+
+    // Execute pre-refund hook
+    const hookResult = await hookSystem.execute('pre:transaction.refund', {
+      merchantId,
+      data: { input, original, refundAmount },
+    });
+
+    if (hookResult.aborted) {
+      throw new ValidationError(hookResult.abortReason || 'Refund blocked by hook');
     }
 
     // Acquire lock to prevent double refunds
@@ -273,11 +327,27 @@ export class TransactionService {
         // Update merchant balance
         await this.updateMerchantBalance(merchantId, original.currency, -netRefund, 'pending');
 
+        // Emit transaction refunded event
+        await eventBus.emit('transaction.refunded', {
+          merchantId,
+          data: {
+            transaction: this.sanitizeTransaction(refundTransaction),
+            originalTransaction: this.sanitizeTransaction(original),
+            refundAmount,
+          },
+        });
+
         await webhookService.send(merchantId, 'transaction.refunded', {
           transaction: this.sanitizeTransaction(refundTransaction),
           originalTransaction: this.sanitizeTransaction(original),
         });
       }
+
+      // Execute post-refund hook
+      await hookSystem.execute('post:transaction.refund', {
+        merchantId,
+        data: { refundTransaction, original },
+      });
 
       logger.info('Refund processed', {
         refundId: refundTransaction.id,
