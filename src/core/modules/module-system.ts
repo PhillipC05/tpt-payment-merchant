@@ -76,6 +76,28 @@ export const PLATFORM_MODULES = {
   TAX_PLANNING: 'tax_planning',
   PHILANTHROPY: 'philanthropy',
   FAMILY_GOVERNANCE: 'family_governance',
+
+  // Checkout & UI
+  HOSTED_CHECKOUT: 'hosted_checkout',
+  PAYMENT_ELEMENTS: 'payment_elements',
+  PRICING_TABLES: 'pricing_tables',
+
+  // Digital Wallets
+  APPLE_PAY: 'apple_pay',
+  GOOGLE_PAY: 'google_pay',
+
+  // Subscription Management
+  DUNNING_MANAGEMENT: 'dunning_management',
+  USAGE_BILLING: 'usage_billing',
+  CUSTOMER_PORTAL: 'customer_portal',
+  TRIALS_COUPONS: 'trials_coupons',
+
+  // Revenue & Accounting
+  REVENUE_RECOGNITION: 'revenue_recognition',
+
+  // In-Person Payments
+  TERMINAL_READERS: 'terminal_readers',
+  TERMINAL_LOCATIONS: 'terminal_locations',
 } as const;
 
 export type ModuleKey = typeof PLATFORM_MODULES[keyof typeof PLATFORM_MODULES];
@@ -109,7 +131,12 @@ export type ModuleCategory =
   | 'compliance'
   | 'advanced'
   | 'core_banking'
-  | 'family_office';
+  | 'family_office'
+  | 'checkout'
+  | 'wallets'
+  | 'subscriptions'
+  | 'accounting'
+  | 'terminal';
 
 // Merchant module activation status
 export interface MerchantModule {
@@ -511,6 +538,107 @@ const MODULE_DEFINITIONS: ModuleDefinition[] = [
     category: 'family_office',
     dependencies: [PLATFORM_MODULES.FAMILY_OFFICE],
     pricing: { type: 'flat', amount: 15000 }, // $150/month
+  },
+
+  // Checkout & UI
+  {
+    key: PLATFORM_MODULES.HOSTED_CHECKOUT,
+    name: 'Hosted Checkout',
+    description: 'Pre-built, optimized checkout pages',
+    category: 'checkout',
+    pricing: { type: 'free' },
+  },
+  {
+    key: PLATFORM_MODULES.PAYMENT_ELEMENTS,
+    name: 'Payment Elements',
+    description: 'Embeddable payment form components',
+    category: 'checkout',
+    pricing: { type: 'free' },
+  },
+  {
+    key: PLATFORM_MODULES.PRICING_TABLES,
+    name: 'Pricing Tables',
+    description: 'Embeddable pricing and plan selection',
+    category: 'checkout',
+    dependencies: [PLATFORM_MODULES.SUBSCRIPTIONS],
+    pricing: { type: 'free' },
+  },
+
+  // Digital Wallets
+  {
+    key: PLATFORM_MODULES.APPLE_PAY,
+    name: 'Apple Pay',
+    description: 'Accept Apple Pay payments',
+    category: 'wallets',
+    pricing: { type: 'free' }, // Included in payment processing
+  },
+  {
+    key: PLATFORM_MODULES.GOOGLE_PAY,
+    name: 'Google Pay',
+    description: 'Accept Google Pay payments',
+    category: 'wallets',
+    pricing: { type: 'free' }, // Included in payment processing
+  },
+
+  // Subscription Management
+  {
+    key: PLATFORM_MODULES.DUNNING_MANAGEMENT,
+    name: 'Dunning Management',
+    description: 'Smart retry logic for failed subscription payments',
+    category: 'subscriptions',
+    dependencies: [PLATFORM_MODULES.SUBSCRIPTIONS],
+    pricing: { type: 'flat', amount: 2500 }, // $25/month
+  },
+  {
+    key: PLATFORM_MODULES.USAGE_BILLING,
+    name: 'Usage-Based Billing',
+    description: 'Metered and consumption-based billing',
+    category: 'subscriptions',
+    dependencies: [PLATFORM_MODULES.SUBSCRIPTIONS],
+    pricing: { type: 'percentage', percentage: 0.5 },
+  },
+  {
+    key: PLATFORM_MODULES.CUSTOMER_PORTAL,
+    name: 'Customer Portal',
+    description: 'Self-service subscription management for customers',
+    category: 'subscriptions',
+    dependencies: [PLATFORM_MODULES.SUBSCRIPTIONS],
+    pricing: { type: 'flat', amount: 5000 }, // $50/month
+  },
+  {
+    key: PLATFORM_MODULES.TRIALS_COUPONS,
+    name: 'Trials & Coupons',
+    description: 'Free trials, discount codes, and promotional pricing',
+    category: 'subscriptions',
+    pricing: { type: 'free' },
+  },
+
+  // Revenue & Accounting
+  {
+    key: PLATFORM_MODULES.REVENUE_RECOGNITION,
+    name: 'Revenue Recognition',
+    description: 'ASC 606/IFRS 15 compliant revenue recognition',
+    category: 'accounting',
+    pricing: { type: 'flat', amount: 10000 }, // $100/month
+  },
+
+  // In-Person Payments
+  {
+    key: PLATFORM_MODULES.TERMINAL_LOCATIONS,
+    name: 'Terminal Locations',
+    description: 'Manage physical store locations',
+    category: 'terminal',
+    requiredVerification: ['kyb'],
+    pricing: { type: 'free' },
+  },
+  {
+    key: PLATFORM_MODULES.TERMINAL_READERS,
+    name: 'Terminal Readers',
+    description: 'Card readers for in-person payments',
+    category: 'terminal',
+    dependencies: [PLATFORM_MODULES.TERMINAL_LOCATIONS],
+    requiredVerification: ['kyb'],
+    pricing: { type: 'flat', amount: 1000 }, // $10/reader/month
   },
 ];
 
