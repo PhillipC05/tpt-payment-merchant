@@ -62,6 +62,20 @@ export const PLATFORM_MODULES = {
   ADVANCED_ANALYTICS: 'advanced_analytics',
   MARKETPLACE_MODE: 'marketplace_mode',
   WHITE_LABEL: 'white_label',
+
+  // Core Banking
+  CORE_BANKING: 'core_banking',
+  ACH_TRANSFERS: 'ach_transfers',
+  WIRE_TRANSFERS: 'wire_transfers',
+  INTEREST_ACCOUNTS: 'interest_accounts',
+
+  // Family Office
+  FAMILY_OFFICE: 'family_office',
+  TRUST_SERVICES: 'trust_services',
+  ESTATE_PLANNING: 'estate_planning',
+  TAX_PLANNING: 'tax_planning',
+  PHILANTHROPY: 'philanthropy',
+  FAMILY_GOVERNANCE: 'family_governance',
 } as const;
 
 export type ModuleKey = typeof PLATFORM_MODULES[keyof typeof PLATFORM_MODULES];
@@ -93,7 +107,9 @@ export type ModuleCategory =
   | 'disbursements'
   | 'escrow'
   | 'compliance'
-  | 'advanced';
+  | 'advanced'
+  | 'core_banking'
+  | 'family_office';
 
 // Merchant module activation status
 export interface MerchantModule {
@@ -405,6 +421,96 @@ const MODULE_DEFINITIONS: ModuleDefinition[] = [
     description: 'Custom branding and domains',
     category: 'advanced',
     pricing: { type: 'flat', amount: 50000 }, // $500/month
+  },
+
+  // Core Banking
+  {
+    key: PLATFORM_MODULES.CORE_BANKING,
+    name: 'Core Banking',
+    description: 'Full banking ledger with double-entry accounting',
+    category: 'core_banking',
+    requiredVerification: ['kyb', 'bank_account'],
+    pricing: { type: 'flat', amount: 50000 }, // $500/month
+  },
+  {
+    key: PLATFORM_MODULES.ACH_TRANSFERS,
+    name: 'ACH Transfers',
+    description: 'Send and receive ACH payments',
+    category: 'core_banking',
+    dependencies: [PLATFORM_MODULES.CORE_BANKING],
+    requiredVerification: ['kyb', 'bank_account'],
+    pricing: { type: 'flat', amount: 50 }, // $0.50 per transfer
+  },
+  {
+    key: PLATFORM_MODULES.WIRE_TRANSFERS,
+    name: 'Wire Transfers',
+    description: 'Domestic and international wire transfers',
+    category: 'core_banking',
+    dependencies: [PLATFORM_MODULES.CORE_BANKING],
+    requiredVerification: ['kyb', 'bank_account'],
+    pricing: { type: 'flat', amount: 2500 }, // $25 per wire
+  },
+  {
+    key: PLATFORM_MODULES.INTEREST_ACCOUNTS,
+    name: 'Interest-Bearing Accounts',
+    description: 'Savings and money market accounts with interest accrual',
+    category: 'core_banking',
+    dependencies: [PLATFORM_MODULES.CORE_BANKING],
+    requiredVerification: ['kyb'],
+    pricing: { type: 'free' }, // Platform takes spread
+  },
+
+  // Family Office
+  {
+    key: PLATFORM_MODULES.FAMILY_OFFICE,
+    name: 'Family Office Management',
+    description: 'Comprehensive family wealth management platform',
+    category: 'family_office',
+    requiredVerification: ['kyb', 'kyc'],
+    pricing: { type: 'flat', amount: 100000 }, // $1,000/month
+  },
+  {
+    key: PLATFORM_MODULES.TRUST_SERVICES,
+    name: 'Trust Services',
+    description: 'Trust creation, management, and distributions',
+    category: 'family_office',
+    dependencies: [PLATFORM_MODULES.FAMILY_OFFICE],
+    requiredVerification: ['kyb', 'kyc'],
+    pricing: { type: 'flat', amount: 50000 }, // $500/month per trust
+  },
+  {
+    key: PLATFORM_MODULES.ESTATE_PLANNING,
+    name: 'Estate Planning',
+    description: 'Wills, POA, healthcare directives, and beneficiary management',
+    category: 'family_office',
+    dependencies: [PLATFORM_MODULES.FAMILY_OFFICE],
+    requiredVerification: ['kyc'],
+    pricing: { type: 'flat', amount: 25000 }, // $250/month
+  },
+  {
+    key: PLATFORM_MODULES.TAX_PLANNING,
+    name: 'Tax Planning & Reporting',
+    description: 'Tax lot tracking, gain/loss harvesting, and tax optimization',
+    category: 'family_office',
+    dependencies: [PLATFORM_MODULES.FAMILY_OFFICE],
+    requiredVerification: ['kyb'],
+    pricing: { type: 'flat', amount: 75000 }, // $750/month
+  },
+  {
+    key: PLATFORM_MODULES.PHILANTHROPY,
+    name: 'Philanthropy Management',
+    description: 'Charitable giving, DAFs, and foundation management',
+    category: 'family_office',
+    dependencies: [PLATFORM_MODULES.FAMILY_OFFICE],
+    pricing: { type: 'percentage', percentage: 0.5 },
+  },
+  {
+    key: PLATFORM_MODULES.FAMILY_GOVERNANCE,
+    name: 'Family Governance',
+    description: 'Family meetings, voting, and governance framework',
+    category: 'family_office',
+    dependencies: [PLATFORM_MODULES.FAMILY_OFFICE],
+    pricing: { type: 'flat', amount: 15000 }, // $150/month
   },
 ];
 
